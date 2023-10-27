@@ -2,7 +2,7 @@
 Simple URL shortener written in Rust
 
 ## How to use
-### Regstration
+### Registration
 Request POST on `/shorten` with a json body, example: `{ "url": "__full_url__" }`
 ```shell
 ❯ curl -v -H "Content-Type: application/json" -d '{ "url": "https://github.com/err0rless/rschat/blob/master/src/server/mod.rs" }' localhost:8080/shorten
