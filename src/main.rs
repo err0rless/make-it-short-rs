@@ -107,12 +107,12 @@ async fn main() {
         .unwrap()
         .execute_batch(
             "BEGIN;
-                CREATE TABLE url (
-                    fullurl     TEXT PRIMARY KEY NOT NULL,
-                    shorturl    TEXT NOT NULL,
-                    id          BIGINT NOT NULL
-                );
-                COMMIT;
+            CREATE TABLE url (
+                fullurl     TEXT PRIMARY KEY NOT NULL,
+                shorturl    TEXT NOT NULL,
+                id          BIGINT NOT NULL
+            );
+            COMMIT;
             ",
         )
         .unwrap();

@@ -4,7 +4,7 @@ Simple URL shortener written in Rust
 ## How to use
 ### Successful case
 You're getting `201 Created` for POST and `308 Permanent Redirect` with original location for GET
-```
+```shell
 ❯ curl -v -H "Content-Type: application/json" -d '{ "url": "https://github.com/err0rless/rschat/blob/master/src/server/mod.rs" }' localhost:8080/shorten
 ...
 < HTTP/1.1 201 Created
@@ -22,7 +22,7 @@ You're getting `201 Created` for POST and `308 Permanent Redirect` with original
 
 ### Duplicate URLs on the system
 You're getting `202 Accepted` without response body
-```
+```shell
 ❯ curl -v -H "Content-Type: application/json" -d '{ "url": "https://github.com/err0rless/rschat/blob/master/src/server/mod.rs" }' localhost:8080/shorten
 ...
 < HTTP/1.1 202 Accepted
@@ -32,7 +32,7 @@ You're getting `202 Accepted` without response body
 
 ### URL is not registered
 You're getting `404 Not Found`
-```
+```shell
 ❯ curl -v localhost:8080/__NOT_FOUND__
 ...
 >
