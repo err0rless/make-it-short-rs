@@ -82,6 +82,13 @@ async fn shorten_url(
 
 #[tokio::main]
 async fn main() {
+    let port_num = if let Some(port_num) = std::env::args().nth(1) {
+        port_num.parse::<i32>().expect("invalid port number")
+    } else {
+        80
+    };
+    let binding_addr = format!("0.0.0.0:{}", port_num);
+
     // initialize tracing
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
@@ -118,7 +125,7 @@ async fn main() {
         .route("/shorten", post(shorten_url))
         .with_state(state);
 
-    axum::Server::bind(&"0.0.0.0:8080".parse().unwrap())
+    axum::Server::bind(&binding_addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .expect("Failed to serve!");
