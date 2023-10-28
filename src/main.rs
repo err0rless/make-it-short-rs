@@ -56,27 +56,15 @@ async fn shorten_url(
 ) -> Response {
     let original_url = url_payload.url;
     if let Ok(sql) = state.sql.lock() {
-        if sql
-            .query_row(
-                "SELECT * FROM url WHERE fullurl=?1",
-                [original_url.as_str()],
-                |row| row.get::<_, String>(0),
-            )
-            .is_ok()
-        {
-            // The URL is already registered on the system!
-            return StatusCode::ACCEPTED.into_response();
-        }
-
         // succeeded to generate a unique ID for the URL
         if let Some(id) = state.id_generator.generate() {
             let short_url = base62::encode(id);
             _ = sql.execute(
-                "INSERT INTO url (fullurl, shorturl, id) VALUES (?1, ?2, ?3)",
+                "INSERT INTO url (id, fullurl, shorturl) VALUES (?1, ?2, ?3)",
                 [
+                    id.to_string().as_str(),
                     original_url.as_str(),
                     short_url.as_str(),
-                    id.to_string().as_str(),
                 ],
             );
             return (
