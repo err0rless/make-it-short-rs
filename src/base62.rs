@@ -13,17 +13,17 @@ pub fn encode(mut num: u64) -> String {
     encoded.chars().rev().collect()
 }
 
+pub fn decode(s: &str) -> u64 {
+    let mut num = 0;
+    for (_, c) in s.chars().enumerate() {
+        num = num * 62 + BASE62_TABLE.chars().position(|ch| ch == c).unwrap() as u64;
+    }
+    num
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-
-    fn decode(s: &str) -> u64 {
-        let mut num = 0;
-        for (_, c) in s.chars().enumerate() {
-            num = num * 62 + BASE62_TABLE.chars().position(|ch| ch == c).unwrap() as u64;
-        }
-        num
-    }
 
     #[test]
     fn base62_test() {

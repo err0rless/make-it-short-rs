@@ -34,11 +34,16 @@ async fn redirect_to_original(
     State(state): State<AppState>,
     Path(shorturl): Path<String>,
 ) -> Response {
-    if let Ok(s) = state.sql.lock().unwrap().query_row(
-        "SELECT fullurl FROM url WHERE shorturl=?1",
-        [shorturl.as_str()],
-        |row| row.get::<_, String>(0),
-    ) {
+    let id = base62::decode(&shorturl);
+    if let Ok(s) =
+        state
+            .sql
+            .lock()
+            .unwrap()
+            .query_row("SELECT fullurl FROM url WHERE id=?1", [id], |row| {
+                row.get::<_, String>(0)
+            })
+    {
         Redirect::permanent(s.as_str()).into_response()
     } else {
         StatusCode::NOT_FOUND.into_response()
@@ -105,15 +110,13 @@ async fn main() {
     sqlconn
         .lock()
         .unwrap()
-        .execute_batch(
-            "BEGIN;
-            CREATE TABLE url (
-                fullurl     TEXT PRIMARY KEY NOT NULL,
-                shorturl    TEXT NOT NULL,
-                id          BIGINT NOT NULL
-            );
-            COMMIT;
-            ",
+        .execute(
+            "CREATE TABLE url (
+                id          BIGINT PRIMARY KEY NOT NULL,
+                fullurl     TEXT NOT NULL,
+                shorturl    TEXT NOT NULL
+            )",
+            [],
         )
         .unwrap();
 
