@@ -1,10 +1,15 @@
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// timestamp at '2023 01 01 00:00:00'
+///
+/// this is for smaller timestamp field
+const CUSTOM_EPOCH: u64 = 1672498800;
+
 #[derive(Debug)]
 struct SnowflakeInner {
-    timestamp: u64,
-    sequence: u64,
+    ts: u64,
+    seq: u64,
 }
 
 /// This can generate up to 4095 unique IDs a second
@@ -21,30 +26,27 @@ impl Snowflake {
     pub fn new(machine_id: u64) -> Self {
         Snowflake {
             machine_id,
-            inner: Mutex::new(SnowflakeInner {
-                timestamp: 0,
-                sequence: 0,
-            }),
+            inner: Mutex::new(SnowflakeInner { ts: 0, seq: 0 }),
         }
     }
 
     pub fn generate(&self) -> Option<u64> {
-        let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs() - CUSTOM_EPOCH;
         if let Ok(mut inner) = self.inner.lock() {
             // different timestamp, reset sequence number
-            if timestamp > inner.timestamp {
-                inner.timestamp = timestamp;
-                inner.sequence = 0;
+            if ts > inner.ts {
+                inner.ts = ts;
+                inner.seq = 0;
             }
 
-            let current_seq = inner.sequence;
+            let current_seq = inner.seq;
             if current_seq >= 4096 {
                 None
             } else {
-                let mut id = timestamp << 22;
+                let mut id = ts << 22;
                 id |= (self.machine_id & 0b0011_1111_1111) << 12;
                 id |= current_seq & 0b1111_1111_1111;
-                inner.sequence = current_seq + 1;
+                inner.seq = current_seq + 1;
                 Some(id)
             }
         } else {

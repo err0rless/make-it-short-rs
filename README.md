@@ -50,5 +50,5 @@ If system caught unrecognized errors, you're getting `500 Internal Server Error`
 
 ## What's next?
 - [ ] Take machine ID for distributed system
-- [ ] Use our own EPOCH instead of Unix's for even shorter URLs
+- [x] Use our own EPOCH instead of Unix's for even shorter URLs
 - [ ] Use persistent DB
