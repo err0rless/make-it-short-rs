@@ -8,26 +8,17 @@ use axum::{
     Json, Router,
 };
 use rusqlite::Connection;
-use serde::{Deserialize, Serialize};
 
 mod base62;
 mod id_generator;
+mod packet;
+
+use packet::*;
 
 #[derive(Clone, Debug)]
 struct AppState {
     id_generator: Arc<id_generator::Snowflake>,
     sql: Arc<Mutex<Connection>>,
-}
-
-#[derive(Deserialize)]
-struct ShortenURL {
-    url: String,
-}
-
-#[derive(Serialize)]
-struct ShortenURLResponse {
-    original_url: String,
-    short_url: String,
 }
 
 async fn redirect_to_original(
@@ -52,9 +43,8 @@ async fn redirect_to_original(
 
 async fn shorten_url(
     State(state): State<AppState>,
-    Json(url_payload): Json<ShortenURL>,
+    Json(payload): Json<ShortenURLReq>,
 ) -> Response {
-    let original_url = url_payload.url;
     if let Ok(sql) = state.sql.lock() {
         // succeeded to generate a unique ID for the URL
         if let Some(id) = state.id_generator.generate() {
@@ -63,18 +53,11 @@ async fn shorten_url(
                 "INSERT INTO url (id, fullurl, shorturl) VALUES (?1, ?2, ?3)",
                 [
                     id.to_string().as_str(),
-                    original_url.as_str(),
+                    payload.url.as_str(),
                     short_url.as_str(),
                 ],
             );
-            return (
-                StatusCode::CREATED,
-                Json(ShortenURLResponse {
-                    original_url,
-                    short_url,
-                }),
-            )
-                .into_response();
+            return (StatusCode::CREATED, Json(ShortenURLRes { short_url })).into_response();
         }
     }
     StatusCode::INTERNAL_SERVER_ERROR.into_response()
