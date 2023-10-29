@@ -30,27 +30,30 @@ impl Snowflake {
         }
     }
 
-    pub fn generate(&self) -> Option<u64> {
-        let ts = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs() - CUSTOM_EPOCH;
-        if let Ok(mut inner) = self.inner.lock() {
-            // different timestamp, reset sequence number
-            if ts > inner.ts {
-                inner.ts = ts;
-                inner.seq = 0;
-            }
+    fn construct_id(ts: u64, machine_id: u64, seq: u64) -> u64 {
+        let mut id = 0;
+        id |= ts << 22;
+        id |= (machine_id & 0b0011_1111_1111) << 12;
+        id |= seq & 0b1111_1111_1111;
+        id
+    }
 
-            let current_seq = inner.seq;
-            if current_seq >= 4096 {
-                None
-            } else {
-                let mut id = ts << 22;
-                id |= (self.machine_id & 0b0011_1111_1111) << 12;
-                id |= current_seq & 0b1111_1111_1111;
-                inner.seq = current_seq + 1;
-                Some(id)
-            }
-        } else {
+    pub fn generate(&self) -> Option<u64> {
+        let mut inner = self.inner.lock().ok()?;
+
+        // different timestamp, reset sequence number
+        let ts = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs() - CUSTOM_EPOCH;
+        if ts > inner.ts {
+            inner.ts = ts;
+            inner.seq = 0;
+        }
+
+        let cur_seq = inner.seq;
+        if cur_seq >= 4096 {
             None
+        } else {
+            inner.seq = cur_seq + 1;
+            Some(Snowflake::construct_id(ts, self.machine_id, cur_seq))
         }
     }
 }
