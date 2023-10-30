@@ -79,8 +79,6 @@ async fn main() {
 
     // @TODO: set machine id with DB instance ID
     let machine_id = 1;
-
-    // Redis connection for unique shared seq number across more than one server instances.
     let redis = redis::Client::open("redis://0.0.0.0/")
         .unwrap()
         .get_connection()

@@ -40,11 +40,6 @@ impl Snowflake {
 
     pub fn generate(&self) -> Option<u64> {
         let ts = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs() - CUSTOM_EPOCH;
-
-        // Sequence number is shared across the server instances through Redis,
-        // so we can guarantee that seq is globally unique.
-        //
-        // timestamp is used as a key, therefore seq is reset every second.
         let Ok(seq) = self.redis.lock().unwrap().incr::<u64, u64, u64>(ts, 1) else {
             return None;
         };
