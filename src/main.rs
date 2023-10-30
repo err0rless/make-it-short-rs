@@ -15,7 +15,7 @@ mod packet;
 
 use packet::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct AppState {
     id_generator: Arc<id_generator::Snowflake>,
     sql: Arc<Mutex<Connection>>,
@@ -77,8 +77,15 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
+    // @TODO: set machine id with DB instance ID
     let machine_id = 1;
-    let id_generator = id_generator::Snowflake::new(machine_id);
+
+    // Redis connection for unique shared seq number across more than one server instances.
+    let redis = redis::Client::open("redis://0.0.0.0/")
+        .unwrap()
+        .get_connection()
+        .expect("failed to connect Redis server");
+    let id_generator = id_generator::Snowflake::new(redis, machine_id);
 
     // Default SQL scheme
     let sqlconn = Arc::new(Mutex::new(
