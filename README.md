@@ -49,6 +49,6 @@ You're getting `404 Not Found`
 If system caught unrecognized errors, you're getting `500 Internal Server Error`
 
 ## What's next?
-- [ ] Take machine ID for distributed system
+- [x] Take machine ID for distributed system
 - [x] Use our own EPOCH instead of Unix's for even shorter URLs
 - [x] Use persistent DB

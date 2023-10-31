@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use clap::Parser;
 use mysql::{prelude::*, *};
 
 mod base62;
@@ -14,6 +15,18 @@ mod id_generator;
 mod packet;
 
 use packet::*;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Name of the person to greet
+    #[arg(short, long, default_value_t = 80)]
+    port: u32,
+
+    /// Number of times to greet
+    #[arg(short, long, default_value_t = 1)]
+    server_id: u32,
+}
 
 #[derive(Clone, Debug)]
 struct AppState {
@@ -61,20 +74,16 @@ async fn shorten_url(
 
 #[tokio::main]
 async fn main() {
-    let port_num = if let Some(port_num) = std::env::args().nth(1) {
-        port_num.parse::<i32>().expect("invalid port number")
-    } else {
-        80
-    };
-    let binding_addr = format!("0.0.0.0:{}", port_num);
+    let args = Args::parse();
+    let binding_addr = format!("0.0.0.0:{}", args.port);
 
     // initialize tracing
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let machine_id = 1;
-    let id_generator = id_generator::Snowflake::new(machine_id);
+    let machine_id = args.server_id;
+    let id_generator = id_generator::Snowflake::new(machine_id as u64);
 
     // mysql connection pool
     let pool = Pool::new("mysql://root@localhost:3306/makeitshort").unwrap();
