@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use rusqlite::Connection;
+use mysql::{prelude::*, *};
 
 mod base62;
 mod id_generator;
@@ -18,7 +18,7 @@ use packet::*;
 #[derive(Clone, Debug)]
 struct AppState {
     id_generator: Arc<id_generator::Snowflake>,
-    sql: Arc<Mutex<Connection>>,
+    sql: mysql::Pool,
 }
 
 async fn redirect_to_original(
@@ -26,14 +26,9 @@ async fn redirect_to_original(
     Path(shorturl): Path<String>,
 ) -> Response {
     let id = base62::decode(&shorturl);
-    if let Ok(s) =
-        state
-            .sql
-            .lock()
-            .unwrap()
-            .query_row("SELECT fullurl FROM url WHERE id=?1", [id], |row| {
-                row.get::<_, String>(0)
-            })
+    let mut sql = state.sql.get_conn().unwrap();
+    if let Ok(Some(s)) =
+        sql.query_first::<String, _>(format!("SELECT fullurl FROM url WHERE id={}", id))
     {
         Redirect::permanent(s.as_str()).into_response()
     } else {
@@ -45,22 +40,23 @@ async fn shorten_url(
     State(state): State<AppState>,
     Json(payload): Json<ShortenURLReq>,
 ) -> Response {
-    if let Ok(sql) = state.sql.lock() {
-        // succeeded to generate a unique ID for the URL
-        if let Some(id) = state.id_generator.generate() {
-            let short_url = base62::encode(id);
-            _ = sql.execute(
-                "INSERT INTO url (id, fullurl, shorturl) VALUES (?1, ?2, ?3)",
-                [
-                    id.to_string().as_str(),
-                    payload.url.as_str(),
-                    short_url.as_str(),
-                ],
-            );
-            return (StatusCode::CREATED, Json(ShortenURLRes { short_url })).into_response();
-        }
+    let mut sql = state.sql.get_conn().unwrap();
+
+    // succeeded to generate a unique ID for the URL
+    if let Some(id) = state.id_generator.generate() {
+        let short_url = base62::encode(id);
+        _ = sql.exec_drop(
+            "INSERT INTO url (id, fullurl, shorturl) VALUES (:id, :fullurl, :shorturl)",
+            params! {
+                "id" => id.to_string().as_str(),
+                "fullurl" => payload.url.as_str(),
+                "shorturl" => short_url.clone().as_str()
+            },
+        );
+        (StatusCode::CREATED, Json(ShortenURLRes { short_url })).into_response()
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
     }
-    StatusCode::INTERNAL_SERVER_ERROR.into_response()
 }
 
 #[tokio::main]
@@ -80,27 +76,21 @@ async fn main() {
     let machine_id = 1;
     let id_generator = id_generator::Snowflake::new(machine_id);
 
-    // Default SQL scheme
-    let sqlconn = Arc::new(Mutex::new(
-        rusqlite::Connection::open_in_memory().expect("failed to establish an SQL connection"),
-    ));
+    // mysql connection pool
+    let pool = Pool::new("mysql://root@localhost:3306/makeitshort").unwrap();
 
-    sqlconn
-        .lock()
-        .unwrap()
-        .execute(
-            "CREATE TABLE url (
-                id          BIGINT PRIMARY KEY NOT NULL,
-                fullurl     TEXT NOT NULL,
-                shorturl    TEXT NOT NULL
-            )",
-            [],
-        )
-        .unwrap();
+    let mut conn = pool.get_conn().unwrap();
+    _ = conn.query_drop(
+        r"CREATE TABLE url (
+            id          BIGINT PRIMARY KEY NOT NULL,
+            fullurl     TEXT NOT NULL,
+            shorturl    TEXT NOT NULL
+        )",
+    );
 
     let state = AppState {
         id_generator: Arc::new(id_generator),
-        sql: Arc::clone(&sqlconn),
+        sql: pool.clone(),
     };
 
     let app = Router::new()
