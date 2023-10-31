@@ -16,14 +16,13 @@ mod packet;
 
 use packet::*;
 
+/// Argument schema
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Name of the person to greet
     #[arg(short, long, default_value_t = 80)]
     port: u32,
 
-    /// Number of times to greet
     #[arg(short, long, default_value_t = 1)]
     server_id: u32,
 }
